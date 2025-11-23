@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="detector.ui.ChartWindow">
+
+    <center>
+        <BarChart fx:id="barChart">
+            <xAxis>
+                <CategoryAxis label="Тематика"/>
+            </xAxis>
+            <yAxis>
+                <NumberAxis label="Количество"/>
+            </yAxis>
+        </BarChart>
+    </center>
+
+</BorderPane>

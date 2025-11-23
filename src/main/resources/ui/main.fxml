@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="detector.ui.MainController">
+
+    <top>
+        <ToolBar>
+            <Button fx:id="loadButton" text="Загрузить файл" onAction="#onLoadFile"/>
+
+            <Button fx:id="analyzeButton" text="Анализировать" onAction="#onAnalyze"/>
+
+            <Button fx:id="detailsButton" text="Подробности" onAction="#onShowDetails"/>
+
+            <Label fx:id="detectedTopicLabel" text="Тема: -" style="-fx-padding: 0 0 0 15;"/>
+        </ToolBar>
+    </top>
+
+    <center>
+        <SplitPane dividerPositions="0.5">
+
+            <VBox spacing="10">
+                <padding><Insets top="10" left="10" right="10" bottom="10"/></padding>
+                <Label text="Введите текст:"/>
+                <TextArea fx:id="inputArea" wrapText="true" prefHeight="400"/>
+            </VBox>
+
+            <VBox spacing="10">
+                <padding><Insets top="10" left="10" right="10" bottom="10"/></padding>
+                <Label text="График частот:"/>
+                <BarChart fx:id="barChart" prefHeight="400">
+                    <xAxis>
+                        <CategoryAxis fx:id="xAxis" label="Темы"/>
+                    </xAxis>
+                    <yAxis>
+                        <NumberAxis fx:id="yAxis" label="Количество"/>
+                    </yAxis>
+                </BarChart>
+            </VBox>
+
+        </SplitPane>
+    </center>
+
+</BorderPane>

@@ -1,0 +1,66 @@
+plugins {
+    id 'java'
+    id 'org.openjfx.javafxplugin' version '0.0.10'
+}
+
+group = 'detector'
+version = '1.0'
+
+sourceCompatibility = '16'
+targetCompatibility = '16'
+
+repositories {
+    mavenCentral()
+}
+
+javafx {
+    version = "16"
+    modules = [ "javafx.controls", "javafx.fxml", "javafx.swing" ]
+}
+
+dependencies {
+    // --- Основные зависимости (POI, JFreeChart) ---
+    implementation 'org.apache.poi:poi:5.2.5'
+    implementation 'org.apache.poi:poi-ooxml:5.2.5'
+    implementation 'org.apache.poi:poi-scratchpad:5.2.5'
+    implementation 'org.jfree:jfreechart:1.5.4'
+
+    // === ДОБАВЛЕНЫ: Зависимости для логирования (Log4j) ===
+    implementation 'org.apache.logging.log4j:log4j-api:2.22.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.22.0'
+
+    // === ДОБАВЛЕНЫ: Зависимости для Unit-тестирования (JUnit 5) ===
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+}
+
+tasks.withType(Javadoc) {
+    options.encoding = "UTF-8"
+}
+jar {
+    archiveFileName = 'TextDetector.jar'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    manifest {
+        attributes(
+                'Main-Class': 'detector.ui.MainFX'
+        )
+    }
+
+    // делаем FAT JAR
+    from({
+        configurations.runtimeClasspath.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    })
+}
+
+// === ОБЯЗАТЕЛЬНОЕ ИСПРАВЛЕНИЕ: Активируем JUnit Platform ===
+// Этот блок решает проблему "0 tests", заставляя Gradle использовать JUnit 5.
+tasks.named('test') {
+    useJUnitPlatform()
+}
