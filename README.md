@@ -5,3 +5,5 @@
 3. Открыть TextDetector при помощи команды "C:\Program Files\Java\jdk-16.0.2\bin\java.exe" --module-path "C:\Program Files\JavaFX\javafx-sdk-17.0.17\lib" --add-modules javafx.controls,javafx.fxml,javafx.graphics,javafx.swing -jar ".\TextDetector.jar"
 4. Если не работает указать свои пути или версии jdk и javafx
 
+upd:
+добавлен скомпилированный файл с документацией и тестами
