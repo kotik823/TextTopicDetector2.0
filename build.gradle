@@ -40,6 +40,9 @@ tasks.withType(JavaCompile) {
 
 tasks.withType(Javadoc) {
     options.encoding = "UTF-8"
+    options.charSet = "UTF-8"
+    // Рекомендуется добавить локаль для русской документации
+    options.locale = "ru"
 }
 jar {
     archiveFileName = 'TextDetector.jar'

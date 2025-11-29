@@ -3,9 +3,15 @@ package detector;
 import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors; // Добавлен для удобства
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Тесты для проверки корректности загрузки словарей в DictionaryManager.
+ * Проверяет, что темы загружены, и их содержимое (слова/фразы) доступно и правильно отформатировано.
+ */
 public class DictionaryManagerTest {
 
     @Test
@@ -36,9 +42,16 @@ public class DictionaryManagerTest {
 
         // 2. Проверка содержимого для конкретной темы ("networks")
         String testTopic = "networks";
-        List<String> words = dm.wordsForTopic(testTopic);
 
-        assertNotNull(words, "Список слов для 'networks' не должен быть null.");
+        // ИСПРАВЛЕНИЕ: Используем новый метод getActiveDictionaryMap,
+        // который возвращает Map<слово, тема> для заданных тем.
+        Map<String, String> wordToTopicMap = dm.getActiveDictionaryMap(List.of(testTopic));
+
+        // Получаем набор слов (ключей) для проверки содержимого
+        Set<String> words = wordToTopicMap.keySet();
+
+        assertNotNull(words, "Набор слов для 'networks' не должен быть null.");
+        // Предполагаем, что 50+ слов — это признак значительного количества
         assertTrue(words.size() > 50, "Должно быть загружено значительное количество слов.");
 
         // 3. Проверка форматирования и ключевых слов
@@ -58,10 +71,11 @@ public class DictionaryManagerTest {
         DictionaryManager dm = new DictionaryManager();
 
         // Запрашиваем слова для несуществующей темы
-        List<String> words = dm.wordsForTopic("non_existent_topic");
+        // ИСПРАВЛЕНИЕ: Используем новый метод getActiveDictionaryMap.
+        Map<String, String> wordToTopicMap = dm.getActiveDictionaryMap(List.of("non_existent_topic"));
 
-        // Ожидается, что будет возвращен пустой список
-        assertNotNull(words, "Должен возвращаться пустой список, а не null.");
-        assertTrue(words.isEmpty(), "Для несуществующей темы должен возвращаться пустой список.");
+        // Ожидается, что будет возвращен пустой Map
+        assertNotNull(wordToTopicMap, "Должен возвращаться пустой Map, а не null.");
+        assertTrue(wordToTopicMap.isEmpty(), "Для несуществующей темы должен возвращаться пустой Map.");
     }
 }

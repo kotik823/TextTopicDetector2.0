@@ -12,30 +12,41 @@
             fx:controller="detector.ui.MainController">
 
     <top>
-        <ToolBar>
-            <Button fx:id="loadButton" text="Загрузить файл" onAction="#onLoadFile"/>
+        <ToolBar BorderPane.alignment="CENTER">
+            <Button fx:id="loadDictButton" text="➕ Загрузить словарь" onAction="#handleLoadDictionary"/>
+            <Separator orientation="VERTICAL"/>
 
-            <Button fx:id="analyzeButton" text="Анализировать" onAction="#onAnalyze"/>
+            <CheckBox fx:id="fuzzyCheckBox" text="Нечеткий анализ (Fuzzy)" selected="true"/>
 
+            <Separator orientation="VERTICAL"/>
+
+            <Button fx:id="analyzeButton" text="🔍 Анализировать" onAction="#handleAnalyze"/>
             <Button fx:id="detailsButton" text="Подробности" onAction="#onShowDetails"/>
+
+            <Separator orientation="VERTICAL"/>
 
             <Label fx:id="detectedTopicLabel" text="Тема: -" style="-fx-padding: 0 0 0 15;"/>
         </ToolBar>
     </top>
 
     <center>
-        <SplitPane dividerPositions="0.5">
+        <SplitPane dividerPositions="0.4" BorderPane.alignment="CENTER">
 
             <VBox spacing="10">
                 <padding><Insets top="10" left="10" right="10" bottom="10"/></padding>
-                <Label text="Введите текст:"/>
-                <TextArea fx:id="inputArea" wrapText="true" prefHeight="400"/>
+
+                <Label text="1. Выберите активные темы (Ctrl/Shift для мультивыбора):"/>
+
+                <ListView fx:id="topicListView" VBox.vgrow="NEVER" prefHeight="150.0" />
+
+                <Label text="2. Введите текст:"/>
+                <TextArea fx:id="inputArea" wrapText="true" VBox.vgrow="ALWAYS"/>
             </VBox>
 
             <VBox spacing="10">
                 <padding><Insets top="10" left="10" right="10" bottom="10"/></padding>
                 <Label text="График частот:"/>
-                <BarChart fx:id="barChart" prefHeight="400">
+                <BarChart fx:id="barChart" VBox.vgrow="ALWAYS">
                     <xAxis>
                         <CategoryAxis fx:id="xAxis" label="Темы"/>
                     </xAxis>
