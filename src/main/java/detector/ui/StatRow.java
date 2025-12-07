@@ -1,6 +1,8 @@
 package detector.ui;
 
 import javafx.beans.property.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Класс-модель для представления одной строки в таблице статистики
@@ -9,8 +11,13 @@ import javafx.beans.property.*;
  * Использует JavaFX {@code Property} для поддержки автоматического
  * обновления пользовательского интерфейса при изменении данных.
  * </p>
+ *
+ * @version 1.1 (Добавлено русскоязычное логирование)
  */
 public class StatRow {
+
+    /** Логгер для класса StatRow. */
+    private static final Logger logger = LogManager.getLogger(StatRow.class);
 
     /** Свойство для хранения слова или названия элемента. */
     private final StringProperty word;
@@ -27,6 +34,7 @@ public class StatRow {
     public StatRow(String word, int count) {
         this.word = new SimpleStringProperty(word);
         this.count = new SimpleIntegerProperty(count);
+        logger.trace("Создана новая строка статистики: Слово='{}', Количество={}", word, count);
     }
 
     /**

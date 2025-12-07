@@ -1,5 +1,8 @@
 package detector;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -8,9 +11,7 @@ import java.util.stream.Collectors;
  * Класс, отвечающий за **анализ текста** на предмет соответствия темам,
  * загруженным из словарей ({@link DictionaryManager}).
  * <p>
- * **Версия 2.1: Исправлена ошибка множественного счета (омонимии/общего корня) в Fuzzy Mode.**
- * Устраняет проблему, когда одно слово в тексте, совпадающее по корню
- * с несколькими словарными словами, засчитывалось многократно.
+ * **Версия 2.3: Добавлено логирование (Log4j 2) на русском языке.**
  * </p>
  * <p>
  * Поддерживает два режима поиска совпадений:
@@ -22,9 +23,12 @@ import java.util.stream.Collectors;
  * предотвращая двойной счет (однословное совпадение внутри многословной фразы).
  *
  * @author (Ваше имя)
- * @version 2.1 (Исправлен множественный счет в Fuzzy Mode)
+ * @version 2.3 (Логирование на русском)
  */
 public class Analyzer {
+
+    /** Логгер для класса Analyzer. */
+    private static final Logger logger = LogManager.getLogger(Analyzer.class);
 
     /**
      * Менеджер словарей, предоставляющий темы и словарные слова.
@@ -43,39 +47,14 @@ public class Analyzer {
     private static final Pattern SPLIT =
             Pattern.compile("[^\\p{L}]+", Pattern.UNICODE_CHARACTER_CLASS);
 
-    /**
-     * Конструктор анализатора.
-     *
-     * @param dm Менеджер словарей, содержащий все тематические слова.
-     * @param fuzzy Флаг режима анализа: {@code true} для нечеткого (стемминг), {@code false} для строгого.
-     */
-    public Analyzer(DictionaryManager dm, boolean fuzzy) {
-        this.dm = dm;
-        this.fuzzy = fuzzy;
-    }
+    // --- Вспомогательные классы Match и StemInfo (без изменений) ---
 
-    /**
-     * Вспомогательный класс для хранения найденного совпадения многословной фразы,
-     * включая ее позицию в массиве токенов.
-     */
     private static class Match {
-        /** Список названий тем, к которым принадлежит совпадение (для устранения омонимии). */
         final List<String> topics;
-        /** Само словарное слово или фраза (как в словаре). */
         final String entry;
-        /** Индекс начала фразы в списке токенов текста. */
         final int startIndex;
-        /** Индекс конца фразы (исключительно) в списке токенов текста. */
         final int endIndex;
 
-        /**
-         * Конструктор для создания объекта Match.
-         *
-         * @param topics Список тем.
-         * @param entry Словарная фраза.
-         * @param startIndex Начальный индекс токена.
-         * @param endIndex Конечный индекс токена (исключительно).
-         */
         Match(List<String> topics, String entry, int startIndex, int endIndex) {
             this.topics = topics;
             this.entry = entry;
@@ -84,52 +63,36 @@ public class Analyzer {
         }
     }
 
-    /**
-     * Вспомогательный класс для хранения информации о словарном слове,
-     * сгруппированной по корню (stem). Используется для Fuzzy Mode.
-     */
     private static class StemInfo {
-        /** Каноническое словарное слово для отчета (например, самое короткое или первое). */
         final String representativeWord;
-        /** Список всех тем, к которым принадлежит хотя бы одно слово с этим корнем. */
         final Set<String> allTopics = new HashSet<>();
 
-        /**
-         * Конструктор для StemInfo.
-         * @param representativeWord Слово, которое будет отображаться в детальном отчете.
-         * @param topics Список тем.
-         */
         StemInfo(String representativeWord, List<String> topics) {
             this.representativeWord = representativeWord;
             this.allTopics.addAll(topics);
         }
 
-        /**
-         * Объединяет информацию о другом слове с тем же корнем.
-         * @param word Новое слово с тем же корнем.
-         * @param topics Список тем нового слова.
-         */
         void merge(String word, List<String> topics) {
-            // RepresentativeWord остается прежним (первым найденным), чтобы избежать хаотичного отображения в отчете
             allTopics.addAll(topics);
         }
     }
 
+    // --- Конструктор ---
+
+    public Analyzer(DictionaryManager dm, boolean fuzzy) {
+        this.dm = dm;
+        this.fuzzy = fuzzy;
+        logger.debug("Анализатор инициализирован в режиме: {}.", fuzzy ? "Нечеткий (Fuzzy)" : "Строгий (Strict)");
+    }
+
     /**
-     * Выполняет **полный анализ** текста, используя только те словари,
-     * названия которых указаны в {@code activeTopics}.
-     * <p>
-     * **Логика мульти-тематического анализа:** Создает карту {@code Map<Слово, List<Тема>>}
-     * для корректного учета омонимов.
-     *
-     * @param text Исходный текст для анализа.
-     * @param activeTopics Список имен тем, которые должны участвовать в анализе (например, "networks", "finance").
-     * @return Объект {@link AnalysisResult}, содержащий общие счетчики по темам
-     * и детальную статистику по конкретным найденным словарным словам.
+     * Выполняет **полный анализ** текста.
      */
     public AnalysisResult analyzeFull(String text, List<String> activeTopics) {
+        logger.info("Начат анализ в режиме: {}. Активные темы: {}",
+                fuzzy ? "Нечеткий (Fuzzy)" : "Строгий (Strict)", activeTopics);
 
-        // 1. Инициализация результатов только для АКТИВНЫХ тем
+        // 1. Инициализация результатов
         Map<String, Integer> countsByTopic = new HashMap<>();
         Map<String, Map<String, Integer>> detailed = new HashMap<>();
 
@@ -139,11 +102,11 @@ public class Analyzer {
         }
 
         if (activeTopics.isEmpty()) {
+            logger.warn("Анализ пропущен: не выбраны активные темы.");
             return new AnalysisResult(countsByTopic, detailed);
         }
 
-        // 2. Создание объединенного словаря с поддержкой множественных тем
-        // Карта: Слово/Фраза -> List<Тема>
+        // 2. Создание объединенного словаря
         Map<String, List<String>> activeWordToTopicsMap = new HashMap<>();
         for (String topic : activeTopics) {
             List<String> words = dm.wordsForTopic(topic);
@@ -151,7 +114,6 @@ public class Analyzer {
                 activeWordToTopicsMap.computeIfAbsent(word, k -> new ArrayList<>()).add(topic);
             }
         }
-
 
         // 3. Разделение словаря
         Map<String, List<String>> multiwordEntries = activeWordToTopicsMap.entrySet().stream()
@@ -162,10 +124,10 @@ public class Analyzer {
                 .filter(entry -> !entry.getKey().contains(" "))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-        // 3.1. Предварительная обработка для Fuzzy Mode (Stem Map) - НОВОЕ!
-        // Карта: Корень -> StemInfo (группирует слова по корням для корректного подсчета)
+        // 3.1. Предварительная обработка для Fuzzy Mode (Stem Map)
         Map<String, StemInfo> stemToInfoMap = new HashMap<>();
         if (fuzzy) {
+            logger.debug("Построение StemMap для нечеткого анализа...");
             for (Map.Entry<String, List<String>> entry : singlewordEntries.entrySet()) {
                 String dictWord = entry.getKey();
                 List<String> dictTopics = entry.getValue();
@@ -177,6 +139,7 @@ public class Analyzer {
                 });
                 stemToInfoMap.computeIfAbsent(dictStem, k -> new StemInfo(dictWord, dictTopics));
             }
+            logger.debug("StemMap успешно построена. Уникальных корней: {}.", stemToInfoMap.size());
         }
 
 
@@ -186,12 +149,20 @@ public class Analyzer {
                 .filter(s -> !s.isBlank())
                 .collect(Collectors.toList());
 
+        if (tokens.isEmpty()) {
+            logger.warn("Текст пуст или не содержит допустимых токенов (слов).");
+            return new AnalysisResult(countsByTopic, detailed);
+        }
+
         List<String> stems = tokens.stream()
                 .map(this::stem)
                 .collect(Collectors.toList());
 
+        logger.debug("Текст токенизирован. Всего токенов: {}. Первый токен: '{}'", tokens.size(), tokens.get(0));
+
 
         // 5. Ищем ВСЕ многословные совпадения
+        logger.debug("Поиск {} многословных фраз.", multiwordEntries.size());
         List<Match> allMultiwordMatches = new ArrayList<>();
         for (Map.Entry<String, List<String>> entry : multiwordEntries.entrySet()) {
             allMultiwordMatches.addAll(
@@ -200,12 +171,10 @@ public class Analyzer {
         }
 
         // 6. Обрабатываем многословные совпадения (предотвращая перекрытие)
-        // Массив для предотвращения перекрытия токенов
         boolean[] usedTokens = new boolean[tokens.size()];
 
         for (Match m : allMultiwordMatches) {
             boolean isOverlapping = false;
-            // Проверка, не использован ли токен ранее другой фразой
             for (int i = m.startIndex; i < m.endIndex; i++) {
                 if (usedTokens[i]) {
                     isOverlapping = true;
@@ -214,7 +183,7 @@ public class Analyzer {
             }
 
             if (!isOverlapping) {
-                // Регистрируем совпадение для ВСЕХ связанных тем
+                // Регистрируем совпадение
                 for (String topic : m.topics) {
                     if (detailed.containsKey(topic)) {
                         detailed.get(topic).merge(m.entry, 1, Integer::sum);
@@ -222,17 +191,22 @@ public class Analyzer {
                     }
                 }
 
+                logger.info("Найдено многословное совпадение: '{}' (Токены: {} по {}) в темах: {}",
+                        m.entry, m.startIndex, m.endIndex - 1, m.topics);
+
                 // Помечаем токены как использованные
                 for (int i = m.startIndex; i < m.endIndex; i++) {
                     usedTokens[i] = true;
                 }
+            } else {
+                logger.debug("Пропуск перекрывающейся многословной фразы: '{}'", m.entry);
             }
         }
 
 
-        // 7. Ищем все одиночные слова (только в неиспользованных токенах)
+        // 7. Ищем все одиночные слова
+        logger.debug("Поиск совпадений для одиночных слов в оставшихся токенах...");
         for (int i = 0; i < tokens.size(); i++) {
-            // Пропускаем токен, если он был использован многословной фразой
             if (usedTokens[i]) {
                 continue;
             }
@@ -240,12 +214,12 @@ public class Analyzer {
             String token = tokens.get(i);
             String stemToken = stems.get(i);
 
-            // Флаг для предотвращения двойного счета одного токена
             boolean tokenAlreadyCounted = false;
 
             // 7.1. Строгое совпадение
             if (singlewordEntries.containsKey(token)) {
                 List<String> topics = singlewordEntries.get(token);
+                logger.debug("Найдено строгое совпадение для токена '{}' в темах: {}", token, topics);
                 for (String topic : topics) {
                     detailed.get(topic).merge(token, 1, Integer::sum);
                     countsByTopic.merge(topic, 1, Integer::sum);
@@ -255,15 +229,16 @@ public class Analyzer {
             }
 
             if (fuzzy && !tokenAlreadyCounted) {
-                // 7.2. Нечеткое (стем) совпадение (Исправлено: считает токен только один раз!)
+                // 7.2. Нечеткое (стем) совпадение
                 StemInfo info = stemToInfoMap.get(stemToken);
 
                 if (info != null) {
                     // Найдено нечеткое совпадение: регистрируем для ВСЕХ связанных тем ОДИН РАЗ
+                    logger.debug("Найдено нечеткое совпадение для токена '{}' (корень: '{}'). Представительное слово: '{}'. Темы: {}",
+                            token, stemToken, info.representativeWord, info.allTopics);
+
                     for (String topic : info.allTopics) {
                         if (detailed.containsKey(topic)) {
-                            // Для детального отчета берем каноническое слово (representativeWord)
-                            // Это предотвращает появление нескольких однокоренных слов в отчете за один токен.
                             detailed.get(topic).merge(info.representativeWord, 1, Integer::sum);
                             countsByTopic.merge(topic, 1, Integer::sum);
                         }
@@ -273,20 +248,12 @@ public class Analyzer {
             }
         }
 
+        logger.info("Анализ завершен. Общие счетчики: {}", countsByTopic);
         return new AnalysisResult(countsByTopic, detailed);
     }
 
     // --- ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ---
 
-    /**
-     * Находит все многословные фразы (совпадения) для данной словарной записи в токенизированном тексте.
-     *
-     * @param topics Список тем, к которым принадлежит фраза.
-     * @param phrase Словарная фраза, которую ищем.
-     * @param tokens Список токенов текста (в нижнем регистре).
-     * @param stems Список стемов токенов текста.
-     * @return Список объектов {@link Match}, представляющих найденные совпадения.
-     */
     private List<Match> findMultiWordMatches(List<String> topics, String phrase, List<String> tokens, List<String> stems) {
         String[] parts = phrase.toLowerCase().split(" ");
         String[] pStems = Arrays.stream(parts).map(this::stem).toArray(String[]::new);
@@ -296,7 +263,6 @@ public class Analyzer {
             boolean ok = true;
 
             for (int j = 0; j < parts.length; j++) {
-                // Проверка: (точное совпадение) ИЛИ (режим fuzzy И совпадение стемов)
                 if (!tokens.get(i + j).equals(parts[j]) &&
                         !(fuzzy && stems.get(i + j).equals(pStems[j]))) {
                     ok = false;
@@ -305,6 +271,7 @@ public class Analyzer {
             }
 
             if (ok) {
+                logger.trace("Найдено совпадение для фразы '{}' по индексу {}", phrase, i);
                 matches.add(new Match(topics, phrase, i, i + parts.length));
             }
         }
@@ -312,12 +279,6 @@ public class Analyzer {
         return matches;
     }
 
-    /**
-     * Реализует **простой русский стеммер**.
-     *
-     * @param w Слово для стемминга.
-     * @return Корень слова.
-     */
     private String stem(String w) {
         if (w.length() <= 3) return w;
 
@@ -332,20 +293,17 @@ public class Analyzer {
         };
 
         for (String s : suf) {
-            if (w.endsWith(s)) return w.substring(0, w.length() - s.length());
+            if (w.endsWith(s)) {
+                String stem = w.substring(0, w.length() - s.length());
+                return stem;
+            }
         }
 
         return w;
     }
 
-    /**
-     * **Устаревший метод.**
-     * Выполняет анализ текста и возвращает только **общие счетчики** по темам.
-     *
-     * @param text Исходный текст.
-     * @return Map, где ключ - название темы, значение - общее количество совпадений.
-     * @deprecated Используйте {@link #analyzeFull(String, List)} для получения полной информации и управления активными темами.
-     */
+    // --- Устаревший метод analyze (без изменений) ---
+
     @Deprecated
     public Map<String, Integer> analyze(String text) {
         List<String> allTopics = new ArrayList<>(dm.topics());
@@ -353,43 +311,22 @@ public class Analyzer {
     }
 
 
-    /**
-     * Контейнер для возврата результатов анализа.
-     * Инкапсулирует общие счетчики и детальную статистику.
-     */
+    // --- Вспомогательный класс AnalysisResult (без изменений) ---
+
     public static class AnalysisResult {
-        /** Общие счетчики совпадений по каждой теме. */
         private final Map<String, Integer> countsByTopic;
-        /** Детальная статистика: какие словарные слова были найдены и сколько раз. */
         private final Map<String, Map<String, Integer>> detailed;
 
-        /**
-         * Конструктор для создания объекта с результатами анализа.
-         *
-         * @param countsByTopic Map, где ключ - название темы, значение - общее количество совпадений.
-         * @param detailed Карта с подробной статистикой. Ключ: название темы (String), Значение: {@code Map<словарное слово, счетчик>}.
-         */
         public AnalysisResult(Map<String, Integer> countsByTopic,
                               Map<String, Map<String, Integer>> detailed) {
             this.countsByTopic = countsByTopic;
             this.detailed = detailed;
         }
 
-        /**
-         * Возвращает общие счетчики совпадений по каждой теме.
-         *
-         * @return Map, где ключ - название темы, значение - общее количество совпадений.
-         */
         public Map<String, Integer> countsByTopic() {
             return countsByTopic;
         }
 
-        /**
-         * Возвращает детальную статистику, показывающую, какие конкретно словарные
-         * слова были найдены и сколько раз.
-         *
-         * @return Карта с подробной статистикой. Ключ: название темы (String), Значение: {@code Map<словарное слово, счетчик>}.
-         */
         public Map<String, Map<String, Integer>> detailed() {
             return detailed;
         }
